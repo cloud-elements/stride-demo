@@ -21,9 +21,9 @@ CRM Demo app URLs:
 
 Salesforce: https://connect.atlassian.io/addon/descriptor/E9bDKDUHmEblN1gB1SOIXJfKKqPgcjo2/latest
 
-Hubspot: _pending_
+Hubspot: https://connect.atlassian.io/addon/descriptor/kJ8B12dpGiAbSdyiXQN6Fu2KW26RlgSH/latest
 
-Closio: _pending_
+Closio: https://connect.atlassian.io/addon/descriptor/cCiusOnDN5HZ2LCAaQ16PlDhON2Fr1Y0/latest
 
 
 ## Contributing and Development
