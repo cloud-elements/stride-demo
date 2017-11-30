@@ -19,7 +19,7 @@ const unfurl_hubspotcrm = (text) => {
     var pat = /https:\/\/app.hubspot.com\/contacts\/(\d+)\/contact\/(\d+)\//g;
     while ((m = pat.exec(text)) !== null) {
         console.log("FOUND: " + JSON.stringify(m));
-        candidates.push({ type: "lead", id: m[2] });
+        candidates.push({ type: "contact", id: m[2] });
     }
 
     var pat = /https:\/\/app.hubspot.com\/contacts\/(\d+)\/deal\/(\d+)\//g;

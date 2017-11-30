@@ -419,7 +419,7 @@ const createFormula = (conversationId, flavor, callback) => {
 }
 
 
-const createFormulaInstance = (formulaId, instanceId, conversationId, flavor) => {
+const createFormulaInstance = (formulaId, instanceId, conversationId, flavor, appUrl) => {
 
     var formulaInstanceBody = {
         "formula": {
@@ -471,7 +471,7 @@ const createFormulaInstance = (formulaId, instanceId, conversationId, flavor) =>
             "create": "true",
             "update": "true",
             "source": instanceId,
-            "url": process.env.APP_URL + '/' + flavor + '/ce-callback/' + conversationId,
+            "url": (appUrl || process.env.APP_URL) + '/' + flavor + '/ce-callback/' + conversationId,
             "object": "accounts,opportunities,contacts,deals"
         }
     };

@@ -357,15 +357,13 @@ app.post('/:flavor/message',
                         }
                     })
                     break;
-                    // case "contact":
-                    //     getObject(flavor, conversationId, 'stride-crm-lead', c.id, (lead) => {
-                    //         if (lead) {
-                    //             const document = myLeadCard(lead);
-                    //             stride.sendMessage({ cloudId, conversationId, document })
-                    //                 .catch(err => console.error('  Something went wrong', prettify_json(err)));
-                    //         }
-                    //     })
-                    //     break;
+                case "contact":
+                    getObject(flavor, conversationId, 'stride-crm-contacts', c.id, (contact) => {
+                        if (contact) {
+                            postContactCard(flavor, cloudId, conversationId, contact);
+                        }
+                    })
+                    break;
                 default:
                     console.log('Object type in ' + flavor + ' not supported.');
             }
@@ -913,7 +911,7 @@ app.get('/:flavor/auth', (req, res) => {
                     console.log("CREATING FORMULA...");
                     // now create the formula
                     ce.createFormula(conversationId, flavor, (formulaId) => {
-                        ce.createFormulaInstance(formulaId, instanceBody.id, conversationId, flavor)
+                        ce.createFormulaInstance(formulaId, instanceBody.id, conversationId, flavor, appURL)
                     });
                 });
             });
