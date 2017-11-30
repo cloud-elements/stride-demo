@@ -6,7 +6,7 @@ This is the live Cloud Elements demo app originally built for StrideCon 2017.
 
 Follow the instructions below for setting up your own demo off of this app.
 
-## Usage
+## Setup
 
 If you don't have a Stride account, [signup for Stride](https://signup.stride.com/)
 
@@ -26,6 +26,10 @@ Hubspot: https://connect.atlassian.io/addon/descriptor/kJ8B12dpGiAbSdyiXQN6Fu2KW
 
 Closio: https://connect.atlassian.io/addon/descriptor/cCiusOnDN5HZ2LCAaQ16PlDhON2Fr1Y0/latest
 
+
+## Usage
+
+Once you have the app installed in your Stride room, there will be helpful prompts from the bot to explain functionality. However, currently, the functionality supported in the demo is the ability 
 
 ## Contributing and Development
 See [Development](Development.md) for notes on running this application in a dev environment and contributing improvements.

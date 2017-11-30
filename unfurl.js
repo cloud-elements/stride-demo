@@ -1,28 +1,31 @@
-
 const unfurl_sfdc = (text) => {
-
-    var pat = /[0-9A-Za-z]{7,}/g;
-    var m;
-    var candidates = [];
-    while ((m = pat.exec(text)) !== null) {
-        candidates.push({type: "lead", id: m[0]});
+    // TODO: change this `if` condition to pro sfdc rather than anti-hubspot/closeio
+    if (text.indexOf('hubspot.com') < 0) {
+        console.log('-- SALESFORCE unfurling');
+        var pat = /[0-9A-Za-z]{7,}/g;
+        var m;
+        var candidates = [];
+        while ((m = pat.exec(text)) !== null) {
+            candidates.push({ type: "lead", id: m[0] });
+        }
+        return candidates;
     }
-    return candidates;
 }
 
 const unfurl_hubspotcrm = (text) => {
+    console.log('-- HUBSPOT unfurling');
     var candidates = [];
 
     var pat = /https:\/\/app.hubspot.com\/contacts\/(\d+)\/contact\/(\d+)\//g;
     while ((m = pat.exec(text)) !== null) {
         console.log("FOUND: " + JSON.stringify(m));
-        candidates.push({type:"lead", id: m[2]});
+        candidates.push({ type: "lead", id: m[2] });
     }
 
     var pat = /https:\/\/app.hubspot.com\/contacts\/(\d+)\/deal\/(\d+)\//g;
     while ((m = pat.exec(text)) !== null) {
         console.log("FOUND: " + JSON.stringify(m));
-        candidates.push({type:"opportunity", id: m[2]});
+        candidates.push({ type: "opportunity", id: m[2] });
     }
     return candidates;
 }
@@ -33,7 +36,7 @@ const unfurl_closeio = (text) => {
     var candidates = [];
     while ((m = pat.exec(text)) !== null) {
         console.log("FOUND CLOSEIO: " + JSON.stringify(m));
-        candidates.push({type:"account", id: m[1]});
+        candidates.push({ type: "account", id: m[1] });
     }
     return candidates;
 }

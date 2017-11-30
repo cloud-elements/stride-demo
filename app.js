@@ -43,7 +43,6 @@ function addFlavor(key) {
     }
     const idKey = key.toUpperCase() + envKey + '_CLIENT_ID';
     const secretKey = key.toUpperCase() + envKey + '_CLIENT_SECRET';
-
     if (!process.env[idKey] || !process.env[secretKey]) {
         return
     }
@@ -357,6 +356,18 @@ app.post('/:flavor/message',
                                 .catch(err => console.error('  Something went wrong', prettify_json(err)));
                         }
                     })
+                    break;
+                    // case "contact":
+                    //     getObject(flavor, conversationId, 'stride-crm-lead', c.id, (lead) => {
+                    //         if (lead) {
+                    //             const document = myLeadCard(lead);
+                    //             stride.sendMessage({ cloudId, conversationId, document })
+                    //                 .catch(err => console.error('  Something went wrong', prettify_json(err)));
+                    //         }
+                    //     })
+                    //     break;
+                default:
+                    console.log('Object type in ' + flavor + ' not supported.');
             }
         });
     })
@@ -861,7 +872,6 @@ app.get('/:flavor/auth', (req, res) => {
     };
     console.log("POST /instances");
     console.log(elementInstantiation);
-    // c
 
     // create the instance
     request(options, function(err, response, body) {
@@ -881,8 +891,6 @@ app.get('/:flavor/auth', (req, res) => {
 
         // success! we have an instance!
         console.log(body.name + " " + body.token);
-        // let's make a SFDC request
-        // console.log(ce.getCRMLeads(body.token));
         // let's save them!
         let instanceBody = {
             name: body.name,
