@@ -37,11 +37,12 @@ const strideProper = require('./stride.js');
 var stridef = {};
 
 function addFlavor(key) {
+    let envKey = '';
     if (process.env.DEV == 1) {
-        key += '_dev';
+        envKey = '_DEV';
     }
-    const idKey = key.toUpperCase() + '_CLIENT_ID';
-    const secretKey = key.toUpperCase() + '_CLIENT_SECRET';
+    const idKey = key.toUpperCase() + envKey + '_CLIENT_ID';
+    const secretKey = key.toUpperCase() + envKey + '_CLIENT_SECRET';
 
     if (!process.env[idKey] || !process.env[secretKey]) {
         return
@@ -822,7 +823,7 @@ app.get('/hubspotcrm/login', (req, res) => {
 
 // OAuth2 receiver
 app.get('/:flavor/auth', (req, res) => {
-    let flavor = req.params.flavor;
+    const flavor = req.params.flavor;
     console.log("-auth: Hi, I received an " + flavor + " OAuth response!");
     console.log(req.body);
     console.log('queries: ' + JSON.stringify(req.query));
@@ -846,7 +847,7 @@ app.get('/:flavor/auth', (req, res) => {
     //
     // create SFDC Instance
     //
-    var elementInstantiation = ce.postInstanceBody(flavor, code);
+    var elementInstantiation = ce.postInstanceBody(flavor, code, appURL);
 
     var options = {
         url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/instances',
@@ -871,7 +872,6 @@ app.get('/:flavor/auth', (req, res) => {
             res.sendStatus(401);
             return;
         }
-
         stridef[flavor].updateGlanceState({
             cloudId: cloudId,
             conversationId: conversationId,
