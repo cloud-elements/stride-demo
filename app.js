@@ -553,7 +553,7 @@ app.get('/:flavor/module/config',
 
         const flavor = req.params.flavor;
 
-        fs.readFile('./app-module-config.html', (err, htmlTemplate) => {
+        fs.readFile('./views/app-module-config.html', (err, htmlTemplate) => {
             const template = _.template(htmlTemplate);
             const html = template({
                 flavor: flavor,
@@ -615,7 +615,7 @@ app.post('/:flavor/module/config/content',
 app.get('/:flavor/module/dialog',
     validateJWTFlavor,
     (req, res) => {
-        res.redirect("/app-module-dialog.html");
+        res.redirect("/views/app-module-dialog.html");
     }
 );
 
@@ -681,7 +681,7 @@ app.get('/:flavor/module/glance/state',
 app.get('/:flavor/module/sidebar',
     validateJWTFlavor,
     (req, res) => {
-        res.redirect("/app-module-sidebar.html");
+        res.redirect("/views/app-module-sidebar.html");
     }
 );
 
@@ -924,7 +924,7 @@ app.get('/:flavor/auth', (req, res) => {
         if (flavor === 'closeio') {
             return res.sendStatus(200);
         } else {
-            return res.redirect("/thanks-close-me.html");
+            return res.redirect("/views/thanks-close-me.html");
         }
     });
 });
