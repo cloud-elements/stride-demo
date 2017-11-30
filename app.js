@@ -37,6 +37,9 @@ const strideProper = require('./stride.js');
 var stridef = {};
 
 function addFlavor(key) {
+    if (process.env.DEV == 1) {
+        key += '_dev';
+    }
     const idKey = key.toUpperCase() + '_CLIENT_ID';
     const secretKey = key.toUpperCase() + '_CLIENT_SECRET';
 
@@ -71,6 +74,15 @@ const flavorRegex = {
 if (Object.keys(stridef).length === 0) {
     console.log("*** NO FLAVORS ENABLED ***; supply {flavor}_CLIENT_ID and {flavor}_CLIENT_SECRET");
     process.exit(1);
+}
+
+// Use correct app url for environment
+var appURL = process.env.APP_URL;
+if (process.env.DEV == 1) {
+    appURL = process.env.DEV_APP_URL;
+    console.log();
+    console.log('Development server enabled. Exposed at: ' + appURL);
+    console.log();
 }
 
 
@@ -168,9 +180,9 @@ function myLeadCard(lead) {
         .description('Phone: ' + lead.phone);
 
 
-    var img = process.env.APP_URL + '/img/x-mark.svg';
+    var img = appURL + '/img/x-mark.svg';
     if (/Working/.exec(lead.status)) {
-        img = process.env.APP_URL + '/img/check-mark.svg';
+        img = appURL + '/img/check-mark.svg';
     }
 
     card.detail()
@@ -305,36 +317,36 @@ app.post('/:flavor/message',
             console.log("Checking " + JSON.stringify(c));
 
             switch (c.type) {
-            case "opportunity":
-                stride.sendTextMessage({
-                    cloudId,
-                    conversationId,
-                    text: "what about opportunity " + c.id + "?",
-                })
-                getObject(flavor, conversationId, 'stride-crm-opportunities', c.id, (obj) => {
-                    if (obj) {
-                        console.log("OPP " + prettify_json(obj))
-                        postOpportunityCard(flavor,
-                                            cloudId,
-                                            conversationId,
-                                            obj);
-                    }
-                })
-                break;
+                case "opportunity":
+                    stride.sendTextMessage({
+                        cloudId,
+                        conversationId,
+                        text: "what about opportunity " + c.id + "?",
+                    })
+                    getObject(flavor, conversationId, 'stride-crm-opportunities', c.id, (obj) => {
+                        if (obj) {
+                            console.log("OPP " + prettify_json(obj))
+                            postOpportunityCard(flavor,
+                                cloudId,
+                                conversationId,
+                                obj);
+                        }
+                    })
+                    break;
 
-            case "account":
-                stride.sendTextMessage({
-                    cloudId,
-                    conversationId,
-                    text: "what about account " + c.id + "?",
-                })
+                case "account":
+                    stride.sendTextMessage({
+                        cloudId,
+                        conversationId,
+                        text: "what about account " + c.id + "?",
+                    })
 
-                getObject(flavor, conversationId, 'accounts', c.id, (obj) => {
-                    if (obj) {
-                        console.log("Yo " + prettify_json(obj))
-                    }
-                })
-                break;
+                    getObject(flavor, conversationId, 'accounts', c.id, (obj) => {
+                        if (obj) {
+                            console.log("Yo " + prettify_json(obj))
+                        }
+                    })
+                    break;
 
                 case "lead":
                     getObject(flavor, conversationId, 'stride-crm-lead', c.id, (lead) => {
@@ -431,9 +443,9 @@ app.post('/:flavor/bot-mention',
         if (m !== null) {
             res.sendStatus(200);
             createNewContact(flavor,
-                             req.body.conversation.id,
-                             req.body.message.text,
-                             m);
+                req.body.conversation.id,
+                req.body.message.text,
+                m);
             return;
         }
 
@@ -734,7 +746,7 @@ app.get('/sfdc/login', (req, res) => {
     let url = 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/elements/' + flavor + '/oauth/url?apiKey=' +
         providerKey +
         '&apiSecret=' + providerSecret +
-        '&callbackUrl=' + process.env.APP_URL + "/" + flavor + "/auth" + '&state=' + req.query.jwt;
+        '&callbackUrl=' + appURL + "/" + flavor + "/auth" + '&state=' + req.query.jwt;
     var options = {
         url: url,
         headers: {
@@ -777,7 +789,7 @@ app.get('/hubspotcrm/login', (req, res) => {
     let url = ce_base + '/elements/api-v2/elements/' + flavor + '/oauth/url?apiKey=' +
         providerKey +
         '&apiSecret=' + providerSecret +
-        '&callbackUrl=' + process.env.APP_URL + "/" + flavor + "/auth" +
+        '&callbackUrl=' + appURL + "/" + flavor + "/auth" +
         '&state=' + req.query.jwt;
 
     var options = {
@@ -887,9 +899,9 @@ app.get('/:flavor/auth', (req, res) => {
             // this is our first bit of activity...
             // create definitions and transformations
             console.log("CREATING DEFINITIONS...");
-            ce.createDefinitions(()=>{
+            ce.createDefinitions(() => {
                 console.log("CREATING TRANSFORMATIONS...");
-                ce.createAllTransformations(()=>{
+                ce.createAllTransformations(() => {
                     console.log("CREATING FORMULA...");
                     // now create the formula
                     ce.createFormula(conversationId, flavor, (formulaId) => {

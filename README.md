@@ -1,5 +1,6 @@
 # Cloud Elements Stride bot Demo
 
+[Pending: GIF of stride bot in action]
 
 This is the live Cloud Elements demo app originally built for StrideCon 2017.
 
