@@ -12,7 +12,7 @@ const prettyjson = require('prettyjson');
 const request = require('request');
 const jwt_decode = require('jwt-decode');
 const ce = require('./ce-util');
-const lukeStore = require('./luke-store');
+const lukeStore = require('./db');
 const unfurl = require('./unfurl');
 
 require('dotenv').config();
@@ -137,13 +137,27 @@ app.post('/:flavor/installed',
             console.log('  Persisted for this conversation:', prettify_json(installationStore[conversationId]));
         } else
             console.log('  Known data for this conversation:', prettify_json(installationStore[conversationId]));
-
+        console.log(flavor);
+        let crm = 'crm';
+        switch (flavor) {
+            case 'sfdc':
+                crm = 'Salesforce';
+                break;
+            case 'hubspotcrm':
+                crm = 'Hubspot';
+                break;
+            case 'closio':
+                crm = 'Close.io';
+                break;
+            default:
+                break;
+        }
 
         // Send a message to the conversation to announce the app is ready
         stride.sendTextMessage({
                 cloudId,
                 conversationId,
-                text: "Hi! I don't do anything right now.",
+                text: 'The ' + crm + ' app was added to this conversation',
             })
             .then(() => res.sendStatus(200))
             .catch(next);
@@ -214,11 +228,15 @@ function postOpportunityCard(flavor, cloudId, conversationId, opp) {
         .catch(err => console.error('  Something went wrong', prettify_json(err)));
 }
 
-function postContactCard(flavor, cloudId, conversationId, con) {
+function postContactCard(flavor, cloudId, conversationId, con, action) {
     const doc = new Document();
-
-    doc.paragraph()
-        .text('Contact ' + con.id)
+    if (action) {
+        doc.paragraph()
+            .text('New contact ' + action + ' with ID: ' + con.id)
+    } else {
+        doc.paragraph()
+            .text('Contact found with ID: ' + con.id + '\n')
+    }
 
     const card = doc.applicationCard('Contact: ' + con.firstName + ' ' + con.lastName)
         .description('Email: ' + con.email);
@@ -358,8 +376,10 @@ app.post('/:flavor/message',
                     })
                     break;
                 case "contact":
+                    console.log('getting a contact ------- ')
                     getObject(flavor, conversationId, 'stride-crm-contacts', c.id, (contact) => {
                         if (contact) {
+                            console.log('--- found contact');
                             postContactCard(flavor, cloudId, conversationId, contact);
                         }
                     })
@@ -943,7 +963,7 @@ app.post('/:flavor/ce-callback/:conversationId', (req, res) => {
     if (x.amount) {
         postOpportunityCard(flavor, cloudId, conversationId, x);
     } else if (x.email) {
-        postContactCard(flavor, cloudId, conversationId, x);
+        postContactCard(flavor, cloudId, conversationId, x, 'created');
     } else if (x.name) {
         postAccountCard(flavor, cloudId, conversationId, x);
     }

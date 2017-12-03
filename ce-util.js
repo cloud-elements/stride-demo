@@ -1,6 +1,6 @@
 require('dotenv').config();
 const request = require('request');
-const lukeStore = require('./luke-store');
+const lukeStore = require('./db');
 
 const postInstanceBody = (elementKey, code, appURL) => {
     let postInstanceBody = {};
@@ -1188,7 +1188,6 @@ const createAllTransformations = (cb) => {
     });
 }
 
-
 module.exports = {
     postInstanceBody: postInstanceBody,
     getCRMOpportunities: getCRMOpportunities,
@@ -1196,7 +1195,6 @@ module.exports = {
     getCRMLeadsByID: getCRMLeadByID,
     createFormula: createFormula,
     createFormulaInstance: createFormulaInstance,
-
     createDefinitions: createDefinitions,
     createTransformations: createTransformations,
     createAllTransformations: createAllTransformations,
