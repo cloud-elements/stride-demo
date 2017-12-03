@@ -104,79 +104,9 @@ function validateJWTFlavor(req, res, next) {
 const configStore = {};
 const installationStore = {};
 
-
 /**
- * Installation lifecycle
- * ----------------------
- * When a user installs or uninstalls your app in a conversation,
- * Stride makes a REST call to an endpoint specified in the app descriptor:
- *       "lifecycle": {
- *           "installed": "/some/url",
- *           "uninstalled": "/some/url"
- *       }
- * At installation, Stride sends the context of the installation: cloudId, conversationId, userId
- * You can store this information for later use.
+ * --- Functions for use in app  ----  server routing begin below all function definitions (line 336)
  */
-app.post('/:flavor/installed',
-    //validateJWTFlavor,  // TODO, JWT isn't standard form
-    (req, res, next) => {
-        const flavor = req.params.flavor;
-        const stride = stridef[flavor];
-
-        console.log('- app installed in a conversation');
-        const { cloudId, userId } = req.body;
-        const conversationId = req.body.resourceId;
-
-        // Store the installation details
-        if (!installationStore[conversationId]) {
-            installationStore[conversationId] = {
-                cloudId,
-                conversationId,
-                installedBy: userId,
-            }
-            console.log('  Persisted for this conversation:', prettify_json(installationStore[conversationId]));
-        } else
-            console.log('  Known data for this conversation:', prettify_json(installationStore[conversationId]));
-        console.log(flavor);
-        let crm = 'crm';
-        switch (flavor) {
-            case 'sfdc':
-                crm = 'Salesforce';
-                break;
-            case 'hubspotcrm':
-                crm = 'Hubspot';
-                break;
-            case 'closio':
-                crm = 'Close.io';
-                break;
-            default:
-                break;
-        }
-
-        // Send a message to the conversation to announce the app is ready
-        stride.sendTextMessage({
-                cloudId,
-                conversationId,
-                text: 'The ' + crm + ' app was added to this conversation',
-            })
-            .then(() => res.sendStatus(200))
-            .catch(next);
-    });
-
-app.post('/:flavor/uninstalled',
-    //validateJWTFlavor,  // TODO, JWT isn't standard form
-    (req, res) => {
-        console.log('- app uninstalled from a conversation');
-        const conversationId = req.body.resourceId;
-
-        // note: we can't send message in the room anymore
-
-        // Remove the installation details
-        installationStore[conversationId] = null;
-
-        res.sendStatus(204);
-    });
-
 
 function myLeadCard(lead) {
     console.log("LEAD CARD: " + prettify_json(lead));
@@ -316,6 +246,152 @@ function replyWithLead(flavor, stride, req, next, convo) {
     })
 }
 
+// sends a message with the user's nickname
+async function sendAPersonalizedResponse({ stride, reqBody }) {
+    const { cloudId } = reqBody;
+    const conversationId = reqBody.conversation.id;
+    const senderId = reqBody.sender.id;
+    let user;
+    await getAndReportUserDetails();
+
+    async function getAndReportUserDetails() {
+        //await stride.replyWithText({reqBody, text: "Getting user details for the sender of the message..."});
+        user = await stride.getUser({ cloudId, userId: senderId });
+        //await stride.replyWithText({reqBody, text: "This message was sent by: " + user.displayName});
+
+        //console.log(user);
+
+        let responses = [
+            "I don't really do anything yet, " + user.nickName + ".",
+            "I don't do much right now, " + user.nickName + ".",
+            "Well, hello world to you, too, " + user.nickName + ".",
+            "Check back later, " + user.nickName + ", I'm still pretty new here."
+        ];
+
+        let aNiceResponse = responses[Math.floor(Math.random() * responses.length)]
+
+        stride.replyWithText({ reqBody, text: aNiceResponse });
+
+        console.log("- personalized response.");
+        return user;
+    }
+
+}
+
+
+const newContact = /new contact ([A-Za-z]+) ([A-Za-z]+)(.*)/;
+const emailPattern = /[A-Za-z][.A-Za-z0-9]*@[A-Za-z0-9.]+/
+const phonePattern1 = /\([0-9]{3}\) *[0-9]{3}-[0-9]{4}/
+const phonePattern2 = /\+[1-9][0-9]* [0-9 -]+/
+
+function createNewContact(flavor, conversationId, text, match) {
+    const firstName = match[1];
+    const lastName = match[2];
+    const extras = match[3];
+
+    const emailMatch = emailPattern.exec(extras);
+    const phoneMatch = phonePattern1.exec(extras) || phonePattern2.exec(extras);
+    console.log("Thinking about '" + extras + "'")
+    console.log("EMAIL: " + JSON.stringify(emailMatch));
+    console.log("Phone: " + JSON.stringify(phoneMatch));
+
+    var contact = {
+        firstName: firstName,
+        lastName: lastName,
+    }
+    if (emailMatch) {
+        contact.email = emailMatch[0];
+    }
+    if (phoneMatch) {
+        contact.phone = phoneMatch[0];
+    }
+
+    const inst = lukeStore.getInstance(conversationId, flavor);
+    if (!inst) {
+        console.log("No instance <" + conversationId + "> (" + flavor + ")");
+        return;
+    }
+
+    console.log("Creating contact: " + JSON.stringify(contact));
+
+    const options = {
+        url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/hubs/crm/stride-crm-contacts',
+        headers: {
+            'content-type': 'application/json',
+            'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG + ", Element " + inst.token,
+        },
+        method: 'POST',
+        body: contact,
+        json: true
+    }
+    request(options, (err, response, body) => {
+        if (checkForErrors(err, response, body)) {
+            console.log("bummer");
+            return;
+        }
+        console.log("success: " + JSON.stringify(body));
+    });
+}
+
+// --------- APP ROUTING BEGIN BELOW ------------- //
+
+/**
+ * Installation lifecycle
+ * ----------------------
+ * When a user installs or uninstalls your app in a conversation,
+ * Stride makes a REST call to an endpoint specified in the app descriptor:
+ *       "lifecycle": {
+ *           "installed": "/some/url",
+ *           "uninstalled": "/some/url"
+ *       }
+ * At installation, Stride sends the context of the installation: cloudId, conversationId, userId
+ * You can store this information for later use.
+ */
+
+app.post('/:flavor/installed',
+    //validateJWTFlavor,  // TODO, JWT isn't standard form
+    (req, res, next) => {
+        const flavor = req.params.flavor;
+        const stride = stridef[flavor];
+
+        console.log('- app installed in a conversation');
+        const { cloudId, userId } = req.body;
+        const conversationId = req.body.resourceId;
+
+        // Store the installation details
+        if (!installationStore[conversationId]) {
+            installationStore[conversationId] = {
+                cloudId,
+                conversationId,
+                installedBy: userId,
+            }
+            console.log('  Persisted for this conversation:', prettify_json(installationStore[conversationId]));
+        } else {
+            console.log('  Known data for this conversation:', prettify_json(installationStore[conversationId]));
+        }
+
+        // Send a message to the conversation to announce the app is ready
+        stride.sendTextMessage({
+                cloudId,
+                conversationId,
+                text: 'The ' + flavorName[flavor] + ' app was added to this conversation',
+            })
+            .then(() => res.sendStatus(200))
+            .catch(next);
+    }); // closes /:flavor/installed route
+
+app.post('/:flavor/uninstalled',
+    //validateJWTFlavor,  // TODO, JWT isn't standard form
+    (req, res) => {
+        console.log('- app uninstalled from a conversation');
+        const conversationId = req.body.resourceId;
+        // note: we can't send message in the room anymore
+        // Remove the installation details
+        installationStore[conversationId] = null;
+        res.sendStatus(204);
+    }); // closes /:flavor/unistalled route
+
+// Route listening to `chat:bot:messages` module (see app-descriptor.json file)
 app.post('/:flavor/message',
     validateJWTFlavor,
     (req, res, next) => {
@@ -391,77 +467,12 @@ app.post('/:flavor/message',
     })
 
 
-const newContact = /new contact ([A-Za-z]+) ([A-Za-z]+)(.*)/;
-const emailPattern = /[A-Za-z][.A-Za-z0-9]*@[A-Za-z0-9.]+/
-const phonePattern1 = /\([0-9]{3}\) *[0-9]{3}-[0-9]{4}/
-const phonePattern2 = /\+[1-9][0-9]* [0-9 -]+/
-
-function createNewContact(flavor, conversationId, text, match) {
-    const firstName = match[1];
-    const lastName = match[2];
-    const extras = match[3];
-
-    const emailMatch = emailPattern.exec(extras);
-    const phoneMatch = phonePattern1.exec(extras) || phonePattern2.exec(extras);
-    console.log("Thinking about '" + extras + "'")
-    console.log("EMAIL: " + JSON.stringify(emailMatch));
-    console.log("Phone: " + JSON.stringify(phoneMatch));
-
-    var contact = {
-        firstName: firstName,
-        lastName: lastName,
-    }
-    if (emailMatch) {
-        contact.email = emailMatch[0];
-    }
-    if (phoneMatch) {
-        contact.phone = phoneMatch[0];
-    }
-
-    const inst = lukeStore.getInstance(conversationId, flavor);
-    if (!inst) {
-        console.log("No instance <" + conversationId + "> (" + flavor + ")");
-        return;
-    }
-
-    console.log("Creating contact: " + JSON.stringify(contact));
-
-    const options = {
-        url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/hubs/crm/stride-crm-contacts',
-        headers: {
-            'content-type': 'application/json',
-            'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG + ", Element " + inst.token,
-        },
-        method: 'POST',
-        body: contact,
-        json: true
-    }
-    request(options, (err, response, body) => {
-        if (checkForErrors(err, response, body)) {
-            console.log("bummer");
-            return;
-        }
-        console.log("success: " + JSON.stringify(body));
-    });
-}
-
-
 /**
  * chat:bot
  * --------
  * This function is called anytime a user mentions the bot in a conversation.
- * You first need to declare the bot in the app descriptor:
- * "chat:bot": [
- *   {
- *     "key": "refapp-bot",
- *     "mention": {
- *      "url": "https://740a1ad5.ngrok.io/bot-mention"
- *     }
- *   }
- * ]
- *
  */
-
+// TODO: add helpful conversational functionality (i.e. "I can do these things: ...")
 app.post('/:flavor/bot-mention',
     validateJWTFlavor,
     (req, res, next) => {
@@ -493,49 +504,11 @@ app.post('/:flavor/bot-mention',
             .then(() => res.sendStatus(200))
             .then(() => sendAPersonalizedResponse({ stride, reqBody }))
             // Now let's do the time-consuming things:
-            //.then(allDone)
             .then(() => showInstance(reqBody.conversation.id))
             .then(r => stride.replyWithText({ reqBody, text: "Hey, my Cloud Elements instance id is: " + r }))
             .catch(err => console.error('  Something went wrong', prettify_json(err)));
-
-        async function allDone() {
-            await stride.replyWithText({ reqBody, text: "OK, that's all I got!" });
-            console.log("- all done.");
-        }
     }
 );
-
-// sends a message with the user's nickname
-async function sendAPersonalizedResponse({ stride, reqBody }) {
-    const { cloudId } = reqBody;
-    const conversationId = reqBody.conversation.id;
-    const senderId = reqBody.sender.id;
-    let user;
-    await getAndReportUserDetails();
-
-    async function getAndReportUserDetails() {
-        //await stride.replyWithText({reqBody, text: "Getting user details for the sender of the message..."});
-        user = await stride.getUser({ cloudId, userId: senderId });
-        //await stride.replyWithText({reqBody, text: "This message was sent by: " + user.displayName});
-
-        //console.log(user);
-
-        let responses = [
-            "I don't really do anything yet, " + user.nickName + ".",
-            "I don't do much right now, " + user.nickName + ".",
-            "Well, hello world to you, too, " + user.nickName + ".",
-            "Check back later, " + user.nickName + ", I'm still pretty new here."
-        ];
-
-        let aNiceResponse = responses[Math.floor(Math.random() * responses.length)]
-
-        stride.replyWithText({ reqBody, text: aNiceResponse });
-
-        console.log("- personalized response.");
-        return user;
-    }
-
-}
 
 /**
  * core:webhook
@@ -564,13 +537,11 @@ app.post('/:flavor/roster-updated',
  * chat:configuration
  * ------------------
  * Your app can expose a configuration page in a dialog inside the Stride app. You first declare it in the descriptor:
- * TBD
  */
 
 app.get('/:flavor/module/config',
     //validateJWTFlavor,
     (req, res) => {
-
         const flavor = req.params.flavor;
 
         fs.readFile('./views/app-module-config.html', (err, htmlTemplate) => {
@@ -594,8 +565,7 @@ app.get('/:flavor/module/config/state',
         console.log("getting config state for conversation " + conversationId);
         const config = configStore[res.locals.context.conversationId];
         const state = { configured: true };
-        if (!config)
-            state.configured = false;
+        if (!config) state.configured = false;
         console.log("returning config state: " + prettify_json(state));
         res.send(JSON.stringify(state));
     }
@@ -873,9 +843,7 @@ app.get('/:flavor/auth', (req, res) => {
         return
     }
 
-    //
-    // create SFDC Instance
-    //
+
     var elementInstantiation = ce.postInstanceBody(flavor, code, appURL);
 
     var options = {
