@@ -729,78 +729,39 @@ app.get('/:flavor/descriptor', (req, res) => {
     });
 });
 
-// handle salesforce login request by obtaining then redirecting to salesforce
-
-app.get('/sfdc/login', (req, res) => {
-
-    const flavor = 'sfdc';
+// The first step of creating an instance for a vendor application that supports OAuth is two fold
+// 1. obtain the correct redirect url using given OAuth app tokens/secrets
+// 2. send the user to that redirect url to complete login and grant permission
+app.get('/:flavor/login', (req, res) => {
+    const flavor = req.params.flavor;
+    // This is one of the common places for differences and nuances between between vendor elements
+    // In this case there is no difference between the OAuth2 process for Salesforce and Hubspot, however an approach like the one below could be used to handle any nuances in vendors that are implemented in the future
+    // Note: differences will be found in the next step of authentication following the return from the vendor, see the OAuth2 redirect listener `/:flavor/auth`
     const providerKeyId = flavor.toUpperCase() + "_KEY";
     const providerSecretId = flavor.toUpperCase() + "_SECRET";
-
     const providerKey = process.env[providerKeyId];
     const providerSecret = process.env[providerSecretId];
-
-    // TODO: hubspotcrm login: curl -X GET "/elements/{keyOrId}/oauth/url?apiKey=<api_key>&apiSecret=<api_secret>&callbackUrl=<url>&siteAddress=<url>"
-
-    let url = 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/elements/' + flavor + '/oauth/url?apiKey=' +
-        providerKey +
-        '&apiSecret=' + providerSecret +
-        '&callbackUrl=' + appURL + "/" + flavor + "/auth" + '&state=' + req.query.jwt;
-    var options = {
-        url: url,
-        headers: {
-            'content-type': 'application/json',
-            'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
-        },
-        method: 'GET',
-        json: true
-    };
-    request(options, (err, response, body) => {
-        if (err) {
-            console.log("ERROR! " + err);
-            return
-        }
-        if (!response || response.statusCode >= 399) {
-            console.log("UNHAPPINESS! " + response.statusCode);
-            console.log(body);
-            return
-        }
-        // success!
-        console.log(body.oauthUrl);
-        return res.redirect(body.oauthUrl);
-    });
-
-});
-
-// Hand hubspotcrm login...  there's an extra dance
-
-app.get('/hubspotcrm/login', (req, res) => {
-
-    const flavor = 'hubspotcrm';
-    const providerKey = process.env['HUBSPOTCRM_KEY'];
-    const providerSecret = process.env['HUBSPOTCRM_SECRET'];
-
-
-    //https://staging.cloud-elements.com/elements/api-v2/elements/hubspotcrm/oauth/url?apiKey=6c46ef8c-3d65-4a2b-b917-2558e26ccf64&apiSecret=e64f6bd9-cb2f-40d0-8f96-379a06e8d5b5&callbackUrl=https://www.getpostman.com/oauth2/callback
-
-    const ce_base = 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com';
-
-    let url = ce_base + '/elements/api-v2/elements/' + flavor + '/oauth/url?apiKey=' +
-        providerKey +
-        '&apiSecret=' + providerSecret +
-        '&callbackUrl=' + appURL + "/" + flavor + "/auth" +
-        '&state=' + req.query.jwt;
-
-    var options = {
-        url: url,
-        headers: {
-            'content-type': 'application/json',
-            'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
-        },
-        method: 'GET',
-        json: true
-    };
-    console.log("CALLING " + JSON.stringify(options));
+    switch (flavor) {
+        case 'sfdc':
+        case 'hubspotcrm':
+            var options = {
+                url: 'https://' + (process.env.CE_ENV || 'api') +
+                    '.cloud-elements.com/elements/api-v2/elements/' + flavor +
+                    '/oauth/url?apiKey=' + providerKey +
+                    '&apiSecret=' + providerSecret +
+                    '&callbackUrl=' + appURL + "/" + flavor + "/auth" +
+                    '&state=' + req.query.jwt,
+                headers: {
+                    'content-type': 'application/json',
+                    'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
+                },
+                method: 'GET',
+                json: true
+            };
+            break;
+        default:
+            break;
+    }
 
     request(options, (err, response, body) => {
         if (err) {
@@ -842,7 +803,7 @@ app.get('/:flavor/auth', (req, res) => {
         return
     }
 
-    // Element Instance bodies can vary slightly depending on vendor authentication settings/configurations
+    // Element Instance bodies can vary slightly depending on vendor authentication settings/configurations, for this reason a utility function is used to create the correct instance body
     var elementInstancePostBody = ce.createInstanceBody(flavor, code, appURL);
 
     var options = {
@@ -884,6 +845,9 @@ app.get('/:flavor/auth', (req, res) => {
             id: body.id
         }
 
+        // Persist relationship between the instanceToken and convesationId
+        // Note: for this application, this persistence is unnecessary as the Cloud Elements formula is the one persisting a relationship to the conversation
+        //       however, if additional features are added, this persisted relationship may be helpful
         lukeStore.saveInstance(conversationId, flavor, instanceBody);
 
         var formulaIdObj = lukeStore.checkIfFormula();
@@ -909,7 +873,7 @@ app.get('/:flavor/auth', (req, res) => {
             ce.createFormulaInstance(formulaIdObj.id, instanceBody.id, conversationId, flavor)
         }
 
-        //return res.redirect(process.env.APP_URL + "/closeme")
+        // Close.io does not emply OAuth2, so there will be no redirect and no need to notify a user to close their tab and return to Stride
         if (flavor === 'closeio') {
             return res.sendStatus(200);
         } else {
@@ -925,7 +889,7 @@ app.post('/:flavor/ce-callback/:conversationId', (req, res) => {
     let flavor = req.params.flavor;
     console.log("event received!");
     const stride = stridef[flavor];
-    const cloudId = "911f7ab6-0583-4083-bed7-bad889ec4c92";
+    const cloudId = "911f7ab6-0583-4083-bed7-bad889ec4c92"; // hardcoded for PoC uses, would be dynamic in production
     // lookup conversationId from instanceId on event obj
     let conversationId = req.params.conversationId;
     let x = req.body;
