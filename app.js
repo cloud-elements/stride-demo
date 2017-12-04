@@ -11,7 +11,7 @@ const { Document } = require('adf-builder');
 const prettyjson = require('prettyjson');
 const request = require('request');
 const jwt_decode = require('jwt-decode');
-const ce = require('./ce-util');
+const ce = require('./ce');
 const lukeStore = require('./db');
 const unfurl = require('./unfurl');
 
@@ -820,7 +820,7 @@ app.get('/hubspotcrm/login', (req, res) => {
 
 });
 
-// OAuth2 receiver
+// OAuth2 receiver, all vendor OAuth apps should be configured to callback to this route
 app.get('/:flavor/auth', (req, res) => {
     const flavor = req.params.flavor;
     console.log("-auth: Hi, I received an " + flavor + " OAuth response!");
@@ -829,22 +829,23 @@ app.get('/:flavor/auth', (req, res) => {
     let code = req.query.code;
     let conversationId;
     let cloudId;
-
+    // check to be sure that the conversationId was attached to OAuth response
+    // if no code than we have no idea which conversation this instance belongs in --> FAIL
     if (req.query.state) {
         const jwt = jwt_decode(req.query.state);
         console.log("JWT is " + JSON.stringify(jwt));
-
         conversationId = jwt.context.resourceId;
         cloudId = jwt.context.cloudId;
         console.log(conversationId);
     } else {
         console.log('BROKENN :((')
-        res.send('Oh no, something went wrong! We didnt get a state from ' + flavor);
+        res.send('Oh no, something went wrong! We didnt get a state from ' + flavor + '. \nPlease try logging in again from Stride.');
         return
     }
 
-
-    var elementInstantiation = ce.postInstanceBody(flavor, code, appURL);
+    // Element Instance bodies can vary slightly depending on vendor authentication settings/configurations
+    // ce.
+    var elementInstancePostBody = ce.createInstanceBody(flavor, code, appURL);
 
     var options = {
         url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/instances',
@@ -853,11 +854,11 @@ app.get('/:flavor/auth', (req, res) => {
             'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
         },
         method: 'POST',
-        body: elementInstantiation,
+        body: elementInstancePostBody,
         json: true
     };
     console.log("POST /instances");
-    console.log(elementInstantiation);
+    console.log(elementInstancePostBody);
 
     // create the instance
     request(options, function(err, response, body) {

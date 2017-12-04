@@ -1,0 +1,42 @@
+{
+    "level": "organization",
+    "objectName": "stride-crm-contacts",
+    "vendorName": "contacts",
+    "startDate": "2017-11-02 21:51:18.390141",
+    "fields": [{
+            "type": "string",
+            "path": "email",
+            "vendorPath": "officeEmail",
+            "level": "organization"
+        },
+        {
+            "type": "string",
+            "path": "id",
+            "vendorPath": "id",
+            "level": "organization"
+        },
+        {
+            "type": "string",
+            "path": "phone",
+            "vendorPath": "officePhone",
+            "level": "organization"
+        }
+    ],
+    "configuration": [{
+            "type": "passThrough",
+            "properties": {
+                "fromVendor": false,
+                "toVendor": false
+            }
+        },
+        {
+            "type": "inherit"
+        }
+    ],
+    "script": {
+        "body": "if(fromVendor){\n  var arr = originalObject.name.split(\" \");\n  transformedObject.firstName = arr[0];\n  transformedObject.lastName = arr[1]; \n}\n\ndone(transformedObject);",
+        "mimeType": "application/javascript",
+        "filterEmptyResponse": false
+    },
+    "isLegacy": false
+}

@@ -1,0 +1,42 @@
+{
+    "level": "organization",
+    "objectName": "stride-crm-opportunities",
+    "vendorName": "opportunities",
+    "startDate": "2017-11-02 21:09:16.405674",
+    "fields": [{
+            "type": "number",
+            "path": "amount",
+            "vendorPath": "value",
+            "level": "organization"
+        },
+        {
+            "type": "string",
+            "path": "comments",
+            "vendorPath": "note",
+            "level": "organization"
+        },
+        {
+            "type": "string",
+            "path": "name",
+            "vendorPath": "lead_name",
+            "level": "organization"
+        }
+    ],
+    "configuration": [{
+            "type": "passThrough",
+            "properties": {
+                "fromVendor": false,
+                "toVendor": false
+            }
+        },
+        {
+            "type": "inherit"
+        }
+    ],
+    "script": {
+        "body": "if(fromVendor){\n \n  transformedObject.closeDate = originalObject.date_won;\n  transformedObject.id= originalObject.id;\n  transformedObject.stage = originalObject.status_type;\n  \n\n}\n\ndone(transformedObject);",
+        "mimeType": "application/javascript",
+        "filterEmptyResponse": false
+    },
+    "isLegacy": false
+}

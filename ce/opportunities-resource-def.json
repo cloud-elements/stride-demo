@@ -1,0 +1,28 @@
+{
+    "fields": [{
+            "type": "string",
+            "path": "closeDate"
+        },
+        {
+            "type": "number",
+            "path": "amount"
+        },
+        {
+            "type": "string",
+            "path": "comments"
+        },
+        {
+            "type": "string",
+            "path": "stage"
+        },
+        {
+            "type": "string",
+            "path": "name"
+        },
+        {
+            "type": "string",
+            "path": "id"
+        }
+    ],
+    "level": "organization"
+}

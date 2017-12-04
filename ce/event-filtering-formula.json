@@ -1,0 +1,110 @@
+{
+    "id": 4656,
+    "name": "strideFormula",
+    "userId": 173348,
+    "accountId": 162337,
+    "createdDate": "2017-11-03T14:49:47Z",
+    "steps": [{
+            "id": 49671,
+            "onSuccess": [
+                "whichObject"
+            ],
+            "onFailure": [],
+            "name": "filterConfig",
+            "type": "filter",
+            "properties": {
+                "body": "if(trigger.event.eventType == 'UPDATED' && config.update == true){\n  done(true);\n} else if(trigger.event.eventType == 'CREATED' && config.create == true){\n  done(true);\n} else {\n  done(false);\n}"
+            }
+        },
+        {
+            "id": 49672,
+            "onSuccess": [
+                "postObject"
+            ],
+            "onFailure": [],
+            "name": "getObject",
+            "type": "elementRequest",
+            "properties": {
+                "method": "GET",
+                "path": "steps.whichObject",
+                "api": "/{common}/{id}",
+                "elementInstanceId": "${config.source}"
+            }
+        },
+        {
+            "id": 49673,
+            "onSuccess": [],
+            "onFailure": [],
+            "name": "postObject",
+            "type": "httpRequest",
+            "properties": {
+                "method": "POST",
+                "body": "steps.getObject.response.body",
+                "url": "${config.url}"
+            }
+        },
+        {
+            "id": 49674,
+            "onSuccess": [
+                "getObject"
+            ],
+            "onFailure": [],
+            "name": "whichObject",
+            "type": "script",
+            "properties": {
+                "body": "var common = trigger.event.objectType;\nif(trigger.event.elementKey=='closeio'){\n  var id = trigger.event.objectId;\n}else{\nvar id = trigger.body.message.raw.contacts[0].vid;}\nif(common == \"accounts\"){\n   done({\"common\":\"stride-crm-accounts\",\n        \"id\":id})\n   }\nelse if(common == \"contacts\"){\n   done({\"common\":\"stride-crm-contacts\",\n         \"id\":id})\n   }\nelse if(common == \"opportunities\"){\n   done({\"common\":\"stride-crm-opportunities\",\n         \"id\":id})\n   }\nelse if(common == \"deals\"){\n   done({\"common\":\"stride-crm-opportunities\",\n         \"id\":id})\n   }\nelse{\n    done({\"common\":\"abort\"})\n}"
+            }
+        }
+    ],
+    "triggers": [{
+        "id": 4224,
+        "onSuccess": [
+            "filterConfig"
+        ],
+        "onFailure": [],
+        "type": "event",
+        "async": true,
+        "name": "trigger",
+        "properties": {
+            "elementInstanceId": "${config.source}"
+        }
+    }],
+    "active": true,
+    "singleThreaded": false,
+    "configuration": [{
+            "id": 14560,
+            "key": "create",
+            "name": "create",
+            "type": "value",
+            "required": true
+        },
+        {
+            "id": 14561,
+            "key": "object",
+            "name": "object",
+            "type": "value",
+            "required": true
+        },
+        {
+            "id": 14562,
+            "key": "source",
+            "name": "source",
+            "type": "elementInstance",
+            "required": true
+        },
+        {
+            "id": 14563,
+            "key": "update",
+            "name": "update",
+            "type": "value",
+            "required": true
+        },
+        {
+            "id": 14564,
+            "key": "url",
+            "name": "url",
+            "type": "value",
+            "required": true
+        }
+    ]
+}

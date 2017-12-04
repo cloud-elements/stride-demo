@@ -1,0 +1,29 @@
+{
+    "level": "organization",
+    "objectName": "stride-crm-accounts",
+    "vendorName": "accounts",
+    "startDate": "2017-11-02 21:17:39.441099",
+    "fields": [{
+        "type": "string",
+        "path": "name",
+        "vendorPath": "name",
+        "level": "organization"
+    }],
+    "configuration": [{
+            "type": "passThrough",
+            "properties": {
+                "fromVendor": false,
+                "toVendor": false
+            }
+        },
+        {
+            "type": "inherit"
+        }
+    ],
+    "script": {
+        "body": "if(fromVendor){\n  transformedObject.description = originalObject.description;\n  transformedObject.status = originalObject.status_label;\n  transformedObject.id = originalObject.id;  \n}\ndone(transformedObject);",
+        "mimeType": "application/javascript",
+        "filterEmptyResponse": false
+    },
+    "isLegacy": false
+}

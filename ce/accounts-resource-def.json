@@ -1,0 +1,20 @@
+{
+    "fields": [{
+            "type": "string",
+            "path": "name"
+        },
+        {
+            "type": "string",
+            "path": "description"
+        },
+        {
+            "type": "string",
+            "path": "id"
+        },
+        {
+            "type": "string",
+            "path": "status"
+        }
+    ],
+    "level": "organization"
+}

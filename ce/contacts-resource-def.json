@@ -1,0 +1,24 @@
+{
+    "fields": [{
+            "type": "string",
+            "path": "firstName"
+        },
+        {
+            "type": "string",
+            "path": "lastName"
+        },
+        {
+            "type": "string",
+            "path": "phone"
+        },
+        {
+            "type": "string",
+            "path": "id"
+        },
+        {
+            "type": "string",
+            "path": "email"
+        }
+    ],
+    "level": "organization"
+}
