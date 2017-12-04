@@ -85,7 +85,6 @@ if (process.env.DEV == 1) {
     console.log();
 }
 
-
 function validateJWTFlavor(req, res, next) {
     const flavor = req.params.flavor;
 
@@ -844,7 +843,6 @@ app.get('/:flavor/auth', (req, res) => {
     }
 
     // Element Instance bodies can vary slightly depending on vendor authentication settings/configurations
-    // ce.
     var elementInstancePostBody = ce.createInstanceBody(flavor, code, appURL);
 
     var options = {
@@ -890,6 +888,8 @@ app.get('/:flavor/auth', (req, res) => {
 
         var formulaIdObj = lukeStore.checkIfFormula();
         console.log("formulaIdObj", formulaIdObj);
+        // check to see if this application has previously run the Cloud Elements enviroment build process
+        // if it has not, build relevant data model definitions, transformations, and formula templates programmatically
         if (!formulaIdObj.id) {
             // this is our first bit of activity...
             // create definitions and transformations
@@ -904,7 +904,7 @@ app.get('/:flavor/auth', (req, res) => {
                     });
                 });
             });
-            //create instance
+            // If the application is aware of a formula in the Cloud Elements enviroment, skip the build and only create a vendor Element Instance
         } else {
             ce.createFormulaInstance(formulaIdObj.id, instanceBody.id, conversationId, flavor)
         }
@@ -918,10 +918,10 @@ app.get('/:flavor/auth', (req, res) => {
     });
 });
 
-// Event reciever from Cloud Elements
+// Event reciever from Cloud Elements formula
+// Since the formula from Cloud Elements has persisted our conversation id and retrieved the pertinent object in our common data model, all we need to do is pass the returned data into a standard Stride card posting function
 app.post('/:flavor/ce-callback/:conversationId', (req, res) => {
     res.sendStatus(200);
-
     let flavor = req.params.flavor;
     console.log("event received!");
     const stride = stridef[flavor];
@@ -937,26 +937,6 @@ app.post('/:flavor/ce-callback/:conversationId', (req, res) => {
         postAccountCard(flavor, cloudId, conversationId, x);
     }
 });
-
-
-// NOTE: db methods reference for Danielle
-
-// -- save elementInstance - DONE
-// lukeStore.saveInstance(conversationId, flavor, instanceBody);
-
-// -- get elementInstance - DONE
-// lukeStore.getInstance(conversationId, flavor);
-
-// -- save FormulaId - DONE
-// lukeStore.saveFormula(formulaId, [conversationId, flavor]);
-
-// -- save formulaInstance to Room/Instance - DONE
-// lukeStore.saveFormulaInstance(conversationId, flavor, formulaInstanceBody);
-// only required field of `formulaInstanceBody` is `id`
-
-// -- update formulaInstance in Room/Instance - DONE
-// lukeStore.updateFormulaInstance(conversationId, flavor, formulaInstanceBody);
-
 
 app.use(function errorHandler(err, req, res, next) {
     if (!err) err = new Error('unknown error')
@@ -978,8 +958,6 @@ const checkForErrors = (err, response, body) => {
     }
     return false;
 }
-
-
 
 const showInstance = (conversationId) => {
     let instanceToken = lukeStore.getInstance(conversationId).token;

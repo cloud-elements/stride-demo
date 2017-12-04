@@ -1,6 +1,6 @@
 require('dotenv').config();
 const request = require('request');
-const lukeStore = require('./db');
+const lukeStore = require('../db');
 
 // import json for formula, resource definitions, and transformations.
 // seperated and stored in seperate files for better organization and version control
@@ -17,11 +17,8 @@ const hubspotContactTransformation = require('./hubpsotcrm/contacts-transformati
 const hubspotOpportunityTransformation = require('./hubpsotcrm/opportunities-transformation.json');
 const hubspotAccountTransformation = require('./hubpsotcrm/accounts-transformation.json');
 
-var opportunityTransformation = {
-    "closeio": closeioOpportunityTransformation,
-    "hubspot": hubspotOpportunityTransformation
-};
-
+// Function to return the correct instance body for a given vendor, this is an area where individual nuances pertaining a vendor (Element) must be known - documentation for these nuances can be found here: https://developers.cloud-elements.com/docs/elements.html
+// At the end of the authentication flow, the correct vendor code/token/whatever needs to be sent to Cloud Elements in order to successfully return an `Element Token` to be used to make API calls against the correct vendor instance
 const createInstanceBody = (elementKey, code, appURL) => {
     let postInstanceBody = {};
     switch (elementKey) {
@@ -41,7 +38,6 @@ const createInstanceBody = (elementKey, code, appURL) => {
                     "create.bulk.properties": "false",
                     "filter.response.nulls": true,
                     "event.notification.enabled": true,
-
                     "event.vendor.type": "polling",
                     "event.poller.refresh_interval": "1",
                     "event.poller.urls": "contacts\nopportunities\naccounts",
@@ -177,10 +173,9 @@ const getCRMLeadByID = (elementToken, leadID) => {
     });
 }
 
-// 
+// Creates the event filtering formula template programmatically
+// Since this template has no instance based configuration, it could easily be built manually in the Cloud Elements environment and its ID stored as a hard-coded value in this application's scope. However, it is built programmatically here for reference purposes.
 const createFormula = (conversationId, flavor, callback) => {
-    var formulaBody = formulaBodyJSON;
-
     var options = {
         method: 'POST',
         url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/formulas',
@@ -189,7 +184,7 @@ const createFormula = (conversationId, flavor, callback) => {
             'content-type': 'application/json',
             'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
         },
-        body: formulaBody
+        body: formulaBodyJSON
     }
     request(options, (err, response, body) => {
         if (err) {
@@ -208,7 +203,7 @@ const createFormula = (conversationId, flavor, callback) => {
 }
 
 // Creates an instance of the event filtering formula with the correct configuration values
-// by storing the conversationId on the formula instancw events from the correct user's account get routed back to the server and then messages are sent to the correct rooms
+// by storing the conversationId on the formula instance, events from the correct user's account are routed back to the server correctly so that messages are sent to the correct rooms
 const createFormulaInstance = (formulaId, instanceId, conversationId, flavor, appUrl) => {
     var formulaInstanceBody = {
         "formula": {
@@ -253,7 +248,7 @@ const createFormulaInstance = (formulaId, instanceId, conversationId, flavor, ap
                 }
             ]
         },
-        "name": "strideFormulaInstance",
+        "name": flavor + "-strideFormula-" + conversationId,
         "settings": {},
         "active": true,
         "configuration": {
@@ -290,93 +285,17 @@ const createFormulaInstance = (formulaId, instanceId, conversationId, flavor, ap
 
 // Creates the app-centric contact data model
 // this lets us refer to all vendor contacts in the same manner and create cards and other app functionality from a uniform model
-const createContactDefinition = (cb) => {
-        var options = {
-            method: 'POST',
-            url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/organizations/objects/stride-crm-contacts/definitions',
-            json: true,
-            headers: {
-                'content-type': 'application/json',
-                'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
-            },
-            body: commonContactModel
-        }
-        request(options, (err, response, body) => {
-            if (err) {
-                console.log("ERROR! " + err);
-                return
-            }
-            if (!response || response.statusCode >= 399) {
-                console.log("UNHAPPINESS! " + response.statusCode);
-                console.log(body);
-            }
-            console.log(body);
-            cb(body);
-        });
-    }
-    // Creates the app-centric opportunity data model
-const createOppDefinition = (cb) => {
-        var options = {
-            method: 'POST',
-            url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/organizations/objects/stride-crm-opportunities/definitions',
-            json: true,
-            headers: {
-                'content-type': 'application/json',
-                'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
-            },
-            body: opportunityModel
-        }
-        request(options, (err, response, body) => {
-            if (err) {
-                console.log("ERROR! " + err);
-                return
-            }
-            if (!response || response.statusCode >= 399) {
-                console.log("UNHAPPINESS! " + response.statusCode);
-                console.log(body);
-            }
-            console.log(body);
-            cb(body);
-        });
-    }
-    // Creates the app-centric account data model
-const createAccountDefinition = (cb) => {
+// Note: this only needs to be done once, and can even be done manually during setup, rather than programmatically, however having it done programmatically helps to account for future changes in the data models
+const createDefinition = (definitionBody, definitionName, cb) => {
     var options = {
         method: 'POST',
-        url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/organizations/objects/stride-crm-accounts/definitions',
+        url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/organizations/objects/' + definitionName + '/definitions',
         json: true,
         headers: {
             'content-type': 'application/json',
             'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
         },
-        body: accountModel
-    }
-    request(options, (err, response, body) => {
-        console.log("DONE CREATING stride-crm-accounts");
-        if (err) {
-            console.log("ERROR! " + err);
-            return
-        }
-        if (!response || response.statusCode >= 399) {
-            console.log("UNHAPPINESS! " + response.statusCode);
-            console.log(body);
-        }
-        console.log(body);
-        cb(body);
-    });
-}
-
-// Creates the CloseIO-to-common account transformation programmatically
-const createCloseTransAcc = (flavor, cb) => {
-    var options = {
-        method: 'POST',
-        url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/organizations/elements/' + flavor + '/transformations/stride-crm-accounts',
-        json: true,
-        headers: {
-            'content-type': 'application/json',
-            'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
-        },
-        body: closeioAccountTransformation
+        body: definitionBody
     }
     request(options, (err, response, body) => {
         if (err) {
@@ -392,17 +311,17 @@ const createCloseTransAcc = (flavor, cb) => {
     });
 }
 
-// Creates the CloseIO-to-common contact transformation programmatically
-const createCloseTransCon = (flavor, cb) => {
+// Creates the vendor-to-common data model transformation programmatically, given a transformation JSON payload and common model definition name
+const createSingleTransformation = (flavor, transformationBody, definitionName, cb) => {
     var options = {
         method: 'POST',
-        url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/organizations/elements/' + flavor + '/transformations/stride-crm-contacts',
+        url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/organizations/elements/' + flavor + '/transformations/' + definitionName,
         json: true,
         headers: {
             'content-type': 'application/json',
             'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
         },
-        body: closeioContactTransformation
+        body: transformationBody
     }
     request(options, (err, response, body) => {
         if (err) {
@@ -418,65 +337,42 @@ const createCloseTransCon = (flavor, cb) => {
     });
 }
 
-// Creates the CloseIO-to-common opportunity transformation programmatically
-const createCloseTransOpp = (flavor, cb) => {
-    var options = {
-        method: 'POST',
-        url: 'https://' + (process.env.CE_ENV || 'api') + '.cloud-elements.com/elements/api-v2/organizations/elements/' + flavor + '/transformations/stride-crm-opportunities',
-        json: true,
-        headers: {
-            'content-type': 'application/json',
-            'authorization': "User " + process.env.CE_USER + ", Organization " + process.env.CE_ORG
-        },
-        body: opportunityTransformation[flavor]
-    }
-    request(options, (err, response, body) => {
-        if (err) {
-            console.log("ERROR! " + err);
-            return
-        }
-        if (!response || response.statusCode >= 399) {
-            console.log("UNHAPPINESS! " + response.statusCode);
-            console.log(body);
-        }
-        console.log(body);
-        cb(body);
-    });
-}
-
+// Function to create all app-centric data models programmatically in the chosen Cloud Elements environment
 const createDefinitions = (cb) => {
     console.log("ABOUT TO CREATE stride-crm-opportunities");
-    createOppDefinition(() => {
+    createDefinition(opportunityModel, 'stride-crm-opportunities', () => {
         console.log("ABOUT TO CREATE stride-crm-contacts");
-        createContactDefinition(() => {
+        createDefinition(contactModel, 'stride-crm-contacts', () => {
             console.log("ABOUT TO CREATE stride-crm-accounts");
-            createAccountDefinition(cb);
+            createDefinition(accountModel, 'stride-crm-accounts', cb);
         });
     });
 }
 
-
-const createTransformations = (flavor, cb) => {
+// Function to create all of the vendor-to-common data model transformations programmatically in the chosen Cloud Elements environment
+// Note: these transformations only need to be built once once and then they will persist within the Cloud Elements environment
+//       this can even be done manually during setup, rather than programmatically, however having it done programmatically helps to account for optional future changes in the transformations
+const postTransformations = (flavor, cb) => {
     switch (flavor) {
-
         case "sfdc":
             throw "not implemented";
-
         case "hubspotcrm":
-            console.log("ABOUT TO CREATE Acc trans");
-            createHubTransAcc(flavor, () => {
-                console.log("ABOUT TO CREATE Con trans");
-                createHubTransCon(flavor, () => {
-                    console.log("ABOUT TO CREATE Opp trans");
-                    createHubTransOpp(flavor, cb);
+            // Creates the Hubspot-to-common account transformation
+            createSingleTransformation(flavor, hubspotAccountTransformation, 'stride-crm-accounts', () => {
+                // Creates the Hubspot-to-common contact transformation
+                createSingleTransformation(flavor, hubspotContactTransformation, 'stride-crm-contacts', () => {
+                    // Creates the Hubspot-to-common opportunity transformation
+                    createSingleTransformation(flavor, hubspotOpportunityTransformation, 'stride-crm-opportunities', cb);
                 });
             });
             break;
-
         case "closeio":
-            createCloseTransAcc(flavor, () => {
-                createCloseTransCon(flavor, () => {
-                    createCloseTransOpp(flavor, cb);
+            // Creates the CloseIO-to-common account transformation
+            createSingleTransformation(flavor, closeioAccountTransformation, 'stride-crm-accounts', () => {
+                // Creates the CloseIO-to-common contact transformation
+                createSingleTransformation(flavor, closeioContactTransformation, 'stride-crm-contacts', () => {
+                    // Creates the CloseIO-to-common opportunity transformation
+                    createSingleTransformation(flavor, closeioOpportunityTransformation, 'stride-crm-opportunities', cb);
                 });
             });
             break;
@@ -484,8 +380,8 @@ const createTransformations = (flavor, cb) => {
 }
 
 const createAllTransformations = (cb) => {
-    createTransformations("hubspotcrm", () => {
-        createTransformations("closeio", cb);
+    postTransformations("hubspotcrm", () => {
+        postTransformations("closeio", cb);
     });
 }
 
@@ -497,6 +393,6 @@ module.exports = {
     createFormula: createFormula,
     createFormulaInstance: createFormulaInstance,
     createDefinitions: createDefinitions,
-    createTransformations: createTransformations,
+    postTransformations: postTransformations,
     createAllTransformations: createAllTransformations,
 }
